@@ -1,0 +1,151 @@
+{
+  "meta": {
+    "name": "moomoo-agent",
+    "version": "1.0.0",
+    "description": "AI trading agent for the Moomoo x Qoder AI Trading Agent Challenge. Paper trading only.",
+    "mode": "paper-only",
+    "timezone": "Asia/Singapore",
+    "competition": {
+      "start_sgt": "2026-11-17T00:00:00+08:00",
+      "hard_cutoff_sgt": "2026-11-30T23:59:00+08:00",
+      "live_trading_enabled": false
+    },
+    "staleness": {
+      "max_data_age_min_regular": 15,
+      "max_data_age_min_extended": 30
+    }
+  },
+
+  "account": {
+    "type": "simulated",
+    "acc_id": "5829755",
+    "account_title": "Moomoo x Qoder AI Paper Trading Agent Challenge",
+    "market_id": 100,
+    "currency": "USD",
+    "starting_equity": 100000.0,
+    "note": "Never use a live acc_id. runner.py refuses any account that is not this simulated one."
+  },
+
+  "universe": [
+    {
+      "symbol": "US.SPY",
+      "name": "SPDR S&P 500 ETF",
+      "asset_class": "index_etf",
+      "max_allocation_pct": 15.0,
+      "notes": "Core US large-cap beta, tight spreads, primary ORB vehicle."
+    },
+    {
+      "symbol": "US.QQQ",
+      "name": "Invesco QQQ Trust",
+      "asset_class": "index_etf",
+      "max_allocation_pct": 15.0,
+      "notes": "Nasdaq-100 growth beta, higher beta than SPY, ORB vehicle #2."
+    },
+    {
+      "symbol": "US.NVDA",
+      "name": "NVIDIA Corp",
+      "asset_class": "single_stock",
+      "max_allocation_pct": 15.0,
+      "notes": "High-beta AI leader. Wider ATR requires wider stops and smaller size."
+    }
+  ],
+
+  "sessions": {
+    "timezone": "Asia/Singapore",
+    "pre_market": {
+      "start": "17:00",
+      "end": "22:30",
+      "order_policy": "limit-only",
+      "note": "Scan or strict limit orders only. Market orders blocked (thin liquidity)."
+    },
+    "regular": {
+      "start": "22:30",
+      "end": "05:00",
+      "order_policy": "market-or-limit",
+      "note": "Primary execution window."
+    },
+    "after_hours": {
+      "start": "05:00",
+      "end": "09:00",
+      "order_policy": "limit-only",
+      "note": "Scan or strict limit orders only. Market orders blocked."
+    },
+    "closed_gap": {
+      "start": "09:00",
+      "end": "17:00",
+      "note": "US market closed in SGT business hours. Scans allowed, no entries."
+    }
+  },
+
+  "calendar": {
+    "market": "US",
+    "closed_dates_sgt": ["2026-11-26"],
+    "half_days": [
+      {
+        "date_sgt": "2026-11-27",
+        "label": "Black Friday half-day (13:00 ET close)",
+        "flatten_by_sgt": "2026-11-28T02:00:00+08:00",
+        "checks_stop_sgt": "2026-11-28T06:00:00+08:00"
+      }
+    ],
+    "weekend_closed": true,
+    "notes": {
+      "2026-11-26": "Thanksgiving: US markets closed. Block all trades; run log/risk audit only.",
+      "2026-11-27": "Black Friday: flatten all positions before 02:00 SGT Nov 28; stop all trading checks at 06:00 SGT Nov 28.",
+      "2026-11-28": "Weekend: closed (except the 00:00-06:00 SGT tail of Friday's half-day).",
+      "2026-11-29": "Weekend: closed.",
+      "2026-11-30": "Competition hard cutoff at 23:59 SGT; no entries after that timestamp."
+    }
+  },
+
+  "risk": {
+    "max_ticker_allocation_pct": 15.0,
+    "max_gross_exposure_pct": 45.0,
+    "risk_per_trade_pct": 0.75,
+    "max_spread_pct": 0.15,
+    "daily_kill_switch_pct": 2.0,
+    "peak_drawdown_halt_pct": 8.0,
+    "stop_loss_pct": 1.5,
+    "stop_atr_multiple": 2.0,
+    "max_stop_pct": 3.0,
+    "take_profit_r_multiple": 2.0,
+    "min_expectancy_r": 0.15,
+    "expectancy_cost_r": 0.05,
+    "flatten_lead_minutes": 30,
+    "min_price": 5.0,
+    "slippage_bps": 2.0
+  },
+
+  "strategy": {
+    "orb_minutes": 30,
+    "orb_breakout_buffer_pct": 0.05,
+    "breakout_volume_ratio_min": 1.2,
+    "retest_tolerance_pct": 0.15,
+    "max_extension_vs_atr": 1.5,
+    "momentum_ema_fast": 9,
+    "momentum_ema_slow": 21,
+    "atr_period": 14,
+    "max_atr_pct": 4.0,
+    "min_intraday_bars": 4
+  },
+
+  "research": {
+    "weights": {
+      "macro": 0.25,
+      "fundamentals": 0.15,
+      "technicals": 0.40,
+      "sentiment": 0.20
+    },
+    "min_conviction": 62.0,
+    "win_prob_base": 0.33,
+    "win_prob_slope_per_point": 0.005,
+    "win_prob_cap": 0.62
+  },
+
+  "logging": {
+    "decisions_file": "logs/decisions.jsonl",
+    "state_file": "logs/risk_state.json",
+    "snapshot_file": "logs/market_snapshot.json",
+    "pending_orders_dir": "logs/pending_orders"
+  }
+}

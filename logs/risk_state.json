@@ -1,0 +1,21 @@
+{
+  "starting_equity": 100000.0,
+  "cash": 100000.0,
+  "equity": 100000.0,
+  "peak_equity": 100000.0,
+  "day": "2026-11-18",
+  "day_start_equity": 100000.0,
+  "daily_realized_pnl": 0.0,
+  "positions": [],
+  "kill_switch": {
+    "active": false,
+    "date": null,
+    "reason": null
+  },
+  "peak_halt": {
+    "active": false,
+    "date": null,
+    "reason": null
+  },
+  "market_value": 0.0
+}

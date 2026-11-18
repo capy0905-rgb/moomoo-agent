@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+logs/pending_orders/
+dashboard/share.html
+dashboard/site/*.qoder.site
+dashboard/site/index.html
+dashboard/site/dist/
+.qoder/

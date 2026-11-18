@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>moomoo-agent · decision dashboard</title>
+<style>
+  :root {
+    --site-bg: #0b0f14;
+    --site-fg: #dbe6f1;
+    --site-accent: #4aa8ff;
+    --site-on-accent: #061018;
+    --site-surface: #131a22;
+    --site-muted: #8397ab;
+    --site-border: #24303d;
+    --site-font: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --site-radius: 10px;
+    --site-space: 1;
+    --site-type: 1;
+    --bg: var(--site-bg);
+    --panel: var(--site-surface);
+    --panel-2: #18212b;
+    --line: var(--site-border);
+    --text: var(--site-fg);
+    --muted: var(--site-muted);
+    --green: #2ecc8f;
+    --red: #ff5d6c;
+    --amber: #f4b740;
+    --blue: var(--site-accent);
+    --mono: var(--site-font);
+  }
+  ::selection { background: var(--site-accent); color: var(--site-on-accent); }
+  :focus-visible { outline: 2px solid var(--site-accent); outline-offset: 2px; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0; background: radial-gradient(1200px 600px at 80% -10%, #10202c 0%, var(--bg) 55%);
+    color: var(--text); font-family: var(--mono); font-size: 13px; line-height: 1.5;
+  }
+  header {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+    padding: 18px 22px; border-bottom: 1px solid var(--line);
+    background: rgba(11, 15, 20, .85); position: sticky; top: 0; z-index: 5; backdrop-filter: blur(8px);
+  }
+  h1 { font-size: calc(16px * var(--site-type, 1)); margin: 0; letter-spacing: .5px; font-weight: 700; }
+  h1 span { color: var(--muted); font-weight: 400; }
+  .badge {
+    display: inline-block; padding: 3px 8px; border: 1px solid var(--line); border-radius: 999px;
+    font-size: 11px; letter-spacing: .6px; text-transform: uppercase; color: var(--muted);
+  }
+  .badge.paper { color: #08211a; background: var(--green); border-color: var(--green); font-weight: 700; }
+  .badge.sim { color: #241a02; background: var(--amber); border-color: var(--amber); font-weight: 700; }
+  .filebar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  input[type=file] { color: var(--muted); font-family: var(--mono); font-size: 12px; max-width: 260px; }
+  #status { color: var(--muted); font-size: 12px; }
+  main { padding: calc(18px * var(--site-space, 1)) calc(22px * var(--site-space, 1)) calc(60px * var(--site-space, 1)); max-width: 1440px; margin: 0 auto; }
+  .grid { display: grid; gap: calc(14px * var(--site-space, 1)); }
+  .kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin-bottom: 14px; }
+  .two { grid-template-columns: 1.35fr 1fr; }
+  .three { grid-template-columns: 1.15fr 1fr 1fr; }
+  @media (max-width: 980px) { .two, .three { grid-template-columns: 1fr; } }
+  .card {
+    background: linear-gradient(180deg, var(--panel-2), var(--panel));
+    border: 1px solid var(--line); border-radius: var(--site-radius); padding: 14px 16px; min-width: 0;
+  }
+  .card h2 {
+    margin: 0 0 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.1px;
+    color: var(--muted); font-weight: 600; display: flex; justify-content: space-between; gap: 8px;
+  }
+  .kpi .v { font-size: calc(22px * var(--site-type, 1)); font-weight: 700; letter-spacing: -.3px; }
+  .kpi .s { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .pos { color: var(--green); } .neg { color: var(--red); } .warn { color: var(--amber); }
+  .muted { color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    text-align: left; color: var(--muted); font-weight: 600; font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: .6px; padding: 6px 8px; border-bottom: 1px solid var(--line);
+  }
+  td { padding: 6px 8px; border-bottom: 1px solid rgba(36, 48, 61, .55); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .pill {
+    display: inline-block; padding: 2px 7px; border-radius: 999px; font-size: 10.5px;
+    border: 1px solid var(--line); color: var(--muted); white-space: nowrap;
+  }
+  .pill.enter { color: #06180f; background: var(--green); border-color: var(--green); font-weight: 700; }
+  .pill.short { color: #1c0609; background: var(--red); border-color: var(--red); font-weight: 700; }
+  .pill.block { color: #2a0a0e; background: #ff8a95; border-color: #ff8a95; font-weight: 700; }
+  .pill.audit { color: #241a02; background: var(--amber); border-color: var(--amber); font-weight: 700; }
+  .pill.neutral { color: var(--text); background: #223040; border-color: #2c3d4f; }
+  .pass { color: var(--green); } .fail { color: var(--red); font-weight: 700; }
+  .sessline { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 8px; }
+  .sessline b { color: var(--text); }
+  .reason { color: var(--muted); border-left: 2px solid var(--line); padding-left: 10px; margin-top: 8px; }
+  .moments { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+  .sym { border: 1px solid var(--line); border-radius: var(--site-radius); padding: 10px 12px; background: rgba(9, 13, 18, .35); }
+  .sym .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .sym .symname { font-weight: 700; }
+  .bar { height: 6px; border-radius: 4px; background: #223040; position: relative; margin: 8px 0 6px; overflow: hidden; }
+  .bar > i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--red), var(--amber) 50%, var(--green)); border-radius: 4px; }
+  .bar > u { position: absolute; top: -3px; bottom: -3px; width: 2px; background: #e8eef5; opacity: .8; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 11.5px; color: var(--muted); }
+  .kv b { color: var(--text); font-weight: 600; text-align: right; }
+  ul.tight { margin: 6px 0 0; padding-left: 18px; color: var(--muted); font-size: 12px; }
+  ul.tight li { margin: 3px 0; }
+  .statement { color: var(--text); font-size: 13px; margin: 0 0 8px; }
+  .orderbox { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-top: 8px; }
+  .orderbox div { background: rgba(9, 13, 18, .45); border: 1px solid var(--line); border-radius: var(--site-radius); padding: 7px 9px; }
+  .orderbox span { display: block; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .6px; }
+  .orderbox b { font-size: 14px; }
+  .hint { color: var(--muted); padding: 40px 10px; text-align: center; border: 1px dashed var(--line); border-radius: var(--site-radius); }
+  .hint b { color: var(--text); }
+  .scroller { max-height: 320px; overflow: auto; }
+  .scroller::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scroller::-webkit-scrollbar-thumb { background: #2b3a49; border-radius: 4px; }
+  .spark { width: 100%; height: 90px; display: block; }
+  .tiny { font-size: 10.5px; color: var(--muted); }
+  .rowbtns { display: flex; gap: 6px; flex-wrap: wrap; }
+  button.ghost {
+    background: transparent; color: var(--muted); border: 1px solid var(--line); border-radius: 6px;
+    padding: 4px 9px; font-family: var(--mono); font-size: 11px; cursor: pointer;
+  }
+  button.ghost:hover { color: var(--text); border-color: #3a4d61; }
+</style>
+</head>
+<body>
+<header>
+  <h1>moomoo-agent <span>· decision dashboard</span></h1>
+  <div class="filebar">
+    <span class="badge paper">paper only</span>
+    <span id="simBadge" class="badge sim" hidden>simulated clock</span>
+    <input id="file" type="file" accept=".jsonl,.json,application/json" />
+    <span id="status">waiting for logs/decisions.jsonl</span>
+  </div>
+</header>
+
+<main id="main">
+  <div class="hint" id="hint">
+    <p><b>Load the audit trail</b> — this page runs entirely on your machine.</p>
+    <p><b>Easiest:</b> double-click <b>open_dashboard.cmd</b> in the repo root. It serves the repo at
+    <b>http://127.0.0.1:8765</b> (localhost only) and the dashboard loads the log automatically.</p>
+    <p><b>Already opened this file directly?</b> Click <b>Choose file</b> above and pick
+    <b>logs/decisions.jsonl</b>. Browsers block a local page from reading other local files on its own —
+    that is the only reason the picker exists. No data is uploaded anywhere.</p>
+  </div>
+</main>
+
+<script id="embedded-log" type="application/json"></script>
+
+<script>
+(function () {
+  "use strict";
+  const $ = (sel) => document.querySelector(sel);
+  let records = [];
+
+  function esc(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+  function num(value, digits) {
+    if (value == null || value === "" || Number.isNaN(Number(value))) return "—";
+    return Number(value).toLocaleString("en-US", {
+      minimumFractionDigits: digits == null ? 2 : digits,
+      maximumFractionDigits: digits == null ? 2 : digits
+    });
+  }
+  function signed(value, digits, suffix) {
+    if (value == null || Number.isNaN(Number(value))) return "—";
+    const n = Number(value);
+    return (n > 0 ? "+" : "") + num(n, digits) + (suffix || "");
+  }
+  function cls(value) {
+    if (value == null) return "";
+    return Number(value) > 0 ? "pos" : Number(value) < 0 ? "neg" : "";
+  }
+  function fmt(value) {
+    if (value == null) return "—";
+    if (typeof value === "object") return JSON.stringify(value);
+    return String(value);
+  }
+  function decisionPill(decision) {
+    const d = String(decision || "NO_TRADE");
+    let c = "neutral";
+    if (d.indexOf("ENTER_LONG") === 0) c = "enter";
+    else if (d.indexOf("ENTER_SHORT") === 0) c = "short";
+    else if (d.indexOf("BLOCKED") === 0) c = "block";
+    else if (d.indexOf("AUDIT") === 0 || d.indexOf("FLATTEN") === 0) c = "audit";
+    return '<span class="pill ' + c + '">' + esc(d) + "</span>";
+  }
+
+  function parseLog(text) {
+    const out = [];
+    text.split(/\r?\n/).forEach(function (line) {
+      const s = line.trim();
+      if (!s) return;
+      try { out.push(JSON.parse(s)); } catch (err) { /* skip malformed line */ }
+    });
+    return out.sort(function (a, b) {
+      return String(a.ts_sgt || "").localeCompare(String(b.ts_sgt || ""));
+    });
+  }
+
+  function latest() { return records.length ? records[records.length - 1] : null; }
+
+  function findSelectedResearch(rec) {
+    if (!rec || !rec.selected) return null;
+    return (rec.research || []).find(function (r) { return r.symbol === rec.selected; }) || null;
+  }
+
+  function render() {
+    const rec = latest();
+    if (!rec) return;
+    const pnl = rec.pnl || {};
+    const sess = rec.session || {};
+    const data = rec.data || {};
+    const order = rec.order || {};
+    const thesis = rec.thesis || {};
+    const selRes = findSelectedResearch(rec);
+    const sel = selRes ? selRes.steps : null;
+
+    $("#simBadge").hidden = !rec.simulated_clock;
+    $("#status").textContent = records.length + " decisions · latest " + (rec.ts_sgt || "—");
+
+    const kpis =
+      '<section class="grid kpis">' +
+        kpi("Equity", "$" + num(pnl.equity_before), "paper account · " + (rec.run_mode || "dry-run"), "") +
+        kpi("Daily P&L", signed(pnl.daily_pnl, 2, " USD"), signed(pnl.daily_drawdown_pct, 2, "%") + " vs day start", cls(pnl.daily_pnl)) +
+        kpi("Daily drawdown", num(pnl.daily_drawdown_pct, 2) + "%", "kill switch at -2.00%", Number(pnl.daily_drawdown_pct) < 0 ? "neg" : "") +
+        kpi("Peak drawdown", num(pnl.peak_drawdown_pct, 2) + "%", "halt at -8.00%", Number(pnl.peak_drawdown_pct) < 0 ? "warn" : "") +
+        kpi("Kill switch", pnl.kill_switch_active ? "ACTIVE" : "CLEAR", pnl.peak_halt_active ? "peak halt ACTIVE" : "peak halt clear", pnl.kill_switch_active ? "neg" : "pos") +
+        kpi("Decision", String(rec.decision || "—").replace(/_/g, " "), rec.selected ? "selected " + rec.selected : "no candidate", "") +
+      "</section>";
+
+    const sessionCard =
+      '<div class="card"><h2>Session &amp; calendar <span class="muted">' + esc(rec.sgt_date || "") + "</span></h2>" +
+        '<div class="sessline">' +
+          "<span>session <b>" + esc(sess.session || "—") + "</b></span>" +
+          "<span>mode <b>" + esc(sess.mode || "—") + "</b></span>" +
+          "<span>entries <b class='" + (sess.entries_allowed ? "pass" : "fail") + "'>" + (sess.entries_allowed ? "ALLOWED" : "BLOCKED") + "</b></span>" +
+          "<span>policy <b>" + esc(sess.order_policy || "—") + "</b></span>" +
+        "</div>" +
+        '<div class="tiny">trading date ' + esc(sess.trading_date || "—") +
+          " · holiday " + (sess.holiday ? "yes" : "no") + " · half day " + (sess.half_day ? "yes" : "no") + "</div>" +
+        (sess.flatten_deadline_sgt ? '<div class="tiny">flatten by ' + esc(sess.flatten_deadline_sgt) + " · checks stop " + esc(sess.checks_stop_sgt) + "</div>" : "") +
+        '<div class="reason">' + esc(sess.reason || "—") + "</div>" +
+      "</div>";
+
+    const marketRows = Object.keys(data.market || {}).map(function (sym) {
+      const m = data.market[sym];
+      const chg = m.last && m.prev_close ? (m.last - m.prev_close) / m.prev_close * 100 : null;
+      return "<tr><td><b>" + esc(sym) + "</b></td>" +
+        '<td class="num">$' + num(m.last) + '</td>' +
+        '<td class="num ' + cls(chg) + '">' + signed(chg, 2, "%") + "</td>" +
+        '<td class="num">' + (m.bid == null ? "—" : num(m.bid)) + " / " + (m.ask == null ? "—" : num(m.ask)) + "</td>" +
+        '<td class="num">' + (m.spread_pct == null ? "—" : num(m.spread_pct, 4) + "%") + "</td>" +
+        '<td class="num tiny">' + esc(m.quote_time_sgt || "—") + "</td></tr>";
+    }).join("");
+
+    const marketCard =
+      '<div class="card"><h2>Market snapshot <span class="muted">age ' + num(data.data_age_min, 1) + " min</span></h2>" +
+        '<div class="scroller"><table><thead><tr><th>symbol</th><th class="num">last</th><th class="num">chg</th>' +
+        '<th class="num">bid / ask</th><th class="num">spread</th><th class="num">quote (SGT)</th></tr></thead><tbody>' +
+        (marketRows || '<tr><td colspan="6" class="muted">no market data</td></tr>') +
+        "</tbody></table></div>" +
+        '<div class="tiny" style="margin-top:8px">source: ' + esc(data.source || "unknown") +
+        " · captured " + esc(data.captured_at_sgt || "—") + "</div>" +
+      "</div>";
+
+    const researchCards = (rec.research || []).map(function (r) {
+      const steps = r.steps || {};
+      const f = steps.factors || {};
+      const orb = r.orb || {};
+      const exp = r.expectancy || {};
+      const composite = Number(steps.composite);
+      const bias = String(steps.outlook && steps.outlook.bias || "NEUTRAL");
+      const barPct = Math.max(0, Math.min(100, composite || 0));
+      return '<div class="sym">' +
+        '<div class="top"><span class="symname">' + esc(r.symbol) + "</span>" +
+          '<span class="pill ' + (bias === "SHORT" ? "short" : bias === "LONG" ? "enter" : "neutral") + '">' + esc(bias) + "</span></div>" +
+        '<div class="bar"><i style="width:' + barPct + '%"></i><u style="left:62%"></u></div>' +
+        '<div class="kv"><span>composite</span><b>' + num(composite, 1) + " / 100 (gate 62)</b>" +
+          "<span>macro</span><b>" + num(f.macro && f.macro.score, 0) + "</b>" +
+          "<span>fundamentals</span><b>" + num(f.fundamentals && f.fundamentals.score, 0) + "</b>" +
+          "<span>technicals</span><b>" + num(f.technicals && f.technicals.score, 0) + "</b>" +
+          "<span>sentiment</span><b>" + num(f.sentiment && f.sentiment.score, 0) + "</b>" +
+          "<span>vehicle</span><b>" + esc(steps.vehicle && steps.vehicle.verdict || "—") + "</b>" +
+          "<span>expectancy</span><b>" + signed(exp.expectancy_r, 3, "R") + " · p_win " + num(exp.p_win, 3) + "</b></div>" +
+        '<div class="tiny" style="margin-top:7px">' + esc(orb.action || "NONE") + " — " + esc(orb.reason || "") + "</div>" +
+        '<div class="tiny">OR ' + (orb.opening_range ? num(orb.opening_range.low) + " – " + num(orb.opening_range.high) : "—") +
+          " · vol " + (orb.volume_ratio == null ? "—" : num(orb.volume_ratio, 2) + "x") +
+          " · momentum " + esc(orb.momentum || "—") + " · ATR " + (orb.atr == null ? "—" : num(orb.atr)) + "</div>" +
+      "</div>";
+    }).join("");
+
+    const researchCard =
+      '<div class="card"><h2>Research pipeline <span class="muted">thesis → factors → outlook → vehicle</span></h2>' +
+        '<div class="moments">' + (researchCards || '<span class="muted">no research</span>') + "</div></div>";
+
+    const invRows = (rec.invalidation_checks || []).map(function (c) {
+      return "<tr><td>" + esc(c.rule) + '</td><td class="num">' + esc(fmt(c.value)) +
+        '</td><td class="num">' + esc(fmt(c.limit)) + '</td><td class="' + (c.pass ? "pass" : "fail") + '">' +
+        (c.pass ? "PASS" : "FAIL") + "</td></tr>";
+    }).join("");
+
+    const riskRows = (rec.risk_checks || []).map(function (c) {
+      return "<tr><td>" + esc(c.rule) + '</td><td class="num">' + esc(fmt(c.value)) +
+        '</td><td class="num">' + esc(fmt(c.limit)) + '</td><td class="' + (c.pass ? "pass" : "fail") + '">' +
+        (c.pass ? "PASS" : "FAIL") + "</td></tr>";
+    }).join("");
+
+    const decisionCard =
+      '<div class="card"><h2>Latest decision <span class="muted">' + esc(rec.ts_sgt || "") + "</span></h2>" +
+        "<div>" + decisionPill(rec.decision) + ' <span class="muted">' + esc(rec.run_mode || "") +
+        (rec.simulated_clock ? " · simulated clock" : "") + "</span></div>" +
+        '<div class="reason">' + esc(rec.rationale || "—") + "</div>" +
+        (thesis.statement ? '<p class="statement" style="margin-top:12px"><b>Thesis.</b> ' + esc(thesis.statement) + "</p>" : "") +
+        (thesis.catalysts && thesis.catalysts.length ?
+          "<div class='tiny' style='margin-top:6px'>Drivers</div><ul class='tight'>" +
+          thesis.catalysts.map(function (c) { return "<li>" + esc(c) + "</li>"; }).join("") + "</ul>" : "") +
+        (thesis.invalidation_rules && thesis.invalidation_rules.length ?
+          "<div class='tiny' style='margin-top:8px'>Invalidation rules</div><ul class='tight'>" +
+          thesis.invalidation_rules.map(function (c) { return "<li>" + esc(c) + "</li>"; }).join("") + "</ul>" : "") +
+      "</div>";
+
+    const orderCard =
+      '<div class="card"><h2>Order intent <span class="muted">' + esc(order.status || "NONE") + "</span></h2>" +
+        (order.symbol ?
+          '<div class="orderbox">' +
+            oBox("side", order.side) + oBox("qty", order.qty) + oBox("symbol", order.symbol) +
+            oBox("limit", "$" + num(order.limit_price)) + oBox("stop", "$" + num(order.stop_loss)) +
+            oBox("target", "$" + num(order.take_profit)) +
+            oBox("R:R", order.brackets ? num(order.brackets.rr, 2) : "—") +
+            oBox("notional", "$" + num(order.est_notional, 0)) +
+          "</div>" +
+          '<div class="tiny" style="margin-top:8px">submitted: <b class="' + (order.submitted ? "fail" : "pass") + '">' +
+            (order.submitted ? "YES" : "NO") + "</b> · account " + esc(order.acc_id) +
+            (rec.sizing ? " · " + esc(rec.sizing.binding) + "-bound sizing" : "") + "</div>"
+          : '<div class="muted">No order intent. ' + esc(rec.decision) + " — nothing was submitted.</div>") +
+      "</div>";
+
+    const checksCard =
+      '<div class="card"><h2>Invalidation checks <span class="muted">ORB quality gates</span></h2>' +
+        '<div class="scroller"><table><thead><tr><th>rule</th><th class="num">value</th><th class="num">limit</th><th>state</th></tr></thead><tbody>' +
+        (invRows || '<tr><td colspan="4" class="muted">no setup evaluated</td></tr>') +
+        "</tbody></table></div></div>";
+
+    const riskCard =
+      '<div class="card"><h2>Pre-trade risk checks <span class="muted">' +
+        (rec.risk_checks || []).filter(function (c) { return c.pass; }).length + "/" + (rec.risk_checks || []).length + " passed</span></h2>" +
+        '<div class="scroller"><table><thead><tr><th>rule</th><th class="num">value</th><th class="num">limit</th><th>state</th></tr></thead><tbody>' +
+        (riskRows || '<tr><td colspan="4" class="muted">no order intent evaluated</td></tr>') +
+        "</tbody></table></div></div>";
+
+    const historyRows = records.slice().reverse().map(function (r, i) {
+      const rp = r.pnl || {};
+      const rs = findSelectedResearch(r);
+      return "<tr><td class='tiny'>" + esc(r.ts_sgt) + "</td><td>" + decisionPill(r.decision) + "</td>" +
+        "<td>" + esc(r.selected || "—") + "</td>" +
+        "<td class='tiny'>" + esc((r.session || {}).session || "—") + "</td>" +
+        '<td class="num">' + (rs ? num(rs.steps.composite, 1) : "—") + "</td>" +
+        '<td class="num ' + cls(rp.daily_pnl) + '">' + signed(rp.daily_pnl, 2) + "</td>" +
+        "<td>" + (r.simulated_clock ? '<span class="pill audit">sim</span>' : "") + "</td></tr>";
+    }).join("");
+
+    const historyCard =
+      '<div class="card"><h2>Decision history <span class="muted">' + records.length + " records · newest first</span></h2>" +
+        '<div class="scroller"><table><thead><tr><th>time (SGT)</th><th>decision</th><th>symbol</th><th>session</th>' +
+        '<th class="num">composite</th><th class="num">daily P&L</th><th></th></tr></thead><tbody>' +
+        historyRows + "</tbody></table></div></div>";
+
+    const equityCard =
+      '<div class="card"><h2>Equity path <span class="muted">from logged marks</span></h2>' + sparkline() +
+        '<div class="tiny">Dry runs never fill orders, so equity is flat until paper executions are reconciled into pnl.equity_before.</div></div>';
+
+    $("#main").innerHTML =
+      kpis +
+      '<section class="grid two" style="margin-bottom:14px">' + sessionCard + decisionCard + "</section>" +
+      '<section class="grid two" style="margin-bottom:14px">' + marketCard + equityCard + "</section>" +
+      researchCard +
+      '<section class="grid two" style="margin:14px 0">' + orderCard + checksCard + "</section>" +
+      riskCard +
+      '<section class="grid" style="margin-top:14px">' + historyCard + "</section>";
+  }
+
+  function kpi(label, value, sub, klass) {
+    return '<div class="card kpi"><h2>' + esc(label) + '</h2><div class="v ' + (klass || "") + '">' +
+      esc(value) + '</div><div class="s">' + esc(sub) + "</div></div>";
+  }
+  function oBox(label, value) {
+    return "<div><span>" + esc(label) + "</span><b>" + esc(value == null ? "—" : value) + "</b></div>";
+  }
+  function sparkline() {
+    const pts = records.map(function (r) { return Number((r.pnl || {}).equity_before); })
+      .filter(function (n) { return !Number.isNaN(n); });
+    if (pts.length < 2) {
+      return '<div class="hint" style="padding:18px">Need at least two logged runs to draw a path.</div>';
+    }
+    const w = 520, h = 90, pad = 10;
+    const min = Math.min.apply(null, pts), max = Math.max.apply(null, pts);
+    const flat = max - min < 0.005;
+    const span = (max - min) || 1;
+    const coords = pts.map(function (v, i) {
+      const x = pad + i * (w - pad * 2) / (pts.length - 1);
+      const y = flat ? h / 2 : h - pad - (v - min) / span * (h - pad * 2);
+      return x.toFixed(1) + "," + y.toFixed(1);
+    });
+    return '<svg class="spark" viewBox="0 0 ' + w + " " + h + '" preserveAspectRatio="none">' +
+      '<line x1="' + pad + '" y1="' + h / 2 + '" x2="' + (w - pad) + '" y2="' + h / 2 +
+        '" stroke="#24303d" stroke-width="1" stroke-dasharray="4 4"/>' +
+      '<polyline fill="none" stroke="var(--site-accent)" stroke-width="2.5" points="' + coords.join(" ") + '"/>' +
+      "</svg>" +
+      (flat ? '<div class="tiny">flat at $' + num(pts[0]) + " across " + pts.length + " runs</div>" : "");
+  }
+
+  function setRecords(text, sourceName) {
+    records = parseLog(text);
+    if (!records.length) {
+      $("#status").textContent = "no valid JSONL records in " + (sourceName || "input");
+      return;
+    }
+    render();
+  }
+
+  $("#file").addEventListener("change", function (ev) {
+    const file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function () { setRecords(String(reader.result || ""), file.name); };
+    reader.readAsText(file);
+  });
+
+  // A shared/exported copy carries its data inline and needs no server at all.
+  const embeddedEl = document.getElementById("embedded-log");
+  const embeddedText = embeddedEl ? embeddedEl.textContent.trim() : "";
+  if (embeddedText) {
+    setRecords(embeddedText, "embedded snapshot");
+    if (records.length) {
+      $("#status").textContent += " · embedded snapshot";
+      $("#file").hidden = true;
+    }
+    return;
+  }
+
+  // Best-effort auto-load when served over http(s); file:// will fall back to the picker.
+  fetch("../logs/decisions.jsonl", { cache: "no-store" })
+    .then(function (res) { return res.ok ? res.text() : Promise.reject(new Error(res.status)); })
+    .then(function (text) { setRecords(text, "logs/decisions.jsonl"); })
+    .catch(function () {
+      $("#status").textContent = "no server detected — click Choose file and pick logs/decisions.jsonl, or run open_dashboard.cmd";
+    });
+})();
+</script>
+</body>
+</html>
